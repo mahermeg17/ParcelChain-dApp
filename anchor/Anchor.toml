@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-basic = "6z68wfurCMYkZG51s1Et9BJEd9nJGUusjHXNt4dGbNNF"
+parcelchain = "C7X3fAU4PQZc3Hg9mDgBp5MRmi2pwpuHAQfRJ61ELniS"
 
 [registry]
 url = "https://api.apr.dev"
@@ -16,7 +16,7 @@ cluster = "Localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "../node_modules/.bin/jest --preset ts-jest"
+test = "npx mocha -r ts-node/register tests/parcelchain.spec.ts"
 
 [test]
 startup_wait = 5000
