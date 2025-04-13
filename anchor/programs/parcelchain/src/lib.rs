@@ -46,6 +46,7 @@ pub mod parcelchain {
     /// * `weight` - Weight of the package in grams
     /// * `dimensions` - Package dimensions [length, width, height] in centimeters
     /// * `price` - Delivery price in lamports
+    /// * `package_id` - Unique identifier for the package
     /// 
     /// # Errors
     /// Returns an error if the package account cannot be initialized
@@ -55,9 +56,15 @@ pub mod parcelchain {
         weight: u32,
         dimensions: [u32; 3],
         price: u64,
+        package_id: u8,
     ) -> Result<()> {
         let package = &mut ctx.accounts.package;
         let platform = &mut ctx.accounts.platform;
+
+        // Validate dimensions
+        require!(dimensions.iter().all(|&d| d > 0), ErrorCode::InvalidDimensions);
+        // Validate price
+        require!(price > 0, ErrorCode::InvalidPrice);
 
         package.sender = ctx.accounts.sender.key();
         package.description = description;
@@ -66,7 +73,7 @@ pub mod parcelchain {
         package.price = price;
         package.status = PackageStatus::Registered;
         package.created_at = Clock::get()?.unix_timestamp;
-        package.id = platform.total_packages;
+        package.id = package_id as u64;
 
         platform.total_packages = platform.total_packages.checked_add(1).unwrap();
 
@@ -173,12 +180,13 @@ pub struct Initialize<'info> {
 
 /// Context for registering a new package
 #[derive(Accounts)]
+#[instruction(description: String, weight: u32, dimensions: [u32; 3], price: u64, package_id: u8)]
 pub struct RegisterPackage<'info> {
     #[account(
         init,
         payer = sender,
-        space = 8 + 32 + 32 + 100 + 4 + 12 + 8 + 1 + 8 + 8 + 8,
-        seeds = [b"package", platform.key().as_ref()],
+        space = 8 + 32 + 32 + 300 + 4 + 12 + 8 + 1 + 8 + 8 + 8,
+        seeds = [b"package", platform.key().as_ref(), &[package_id]],
         bump
     )]
     pub package: Account<'info, Package>,
@@ -217,7 +225,11 @@ pub struct CompleteDelivery<'info> {
     #[account(mut)]
     pub platform: Account<'info, Platform>,
     /// CHECK: This is the escrow account that holds the payment funds
-    #[account(mut, signer)]
+    #[account(
+        mut,
+        signer,
+        constraint = escrow.lamports() >= package.price
+    )]
     pub escrow: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -247,6 +259,7 @@ pub struct Platform {
     pub fee_rate: u16,
     /// Total number of packages registered on the platform
     pub total_packages: u64,
+    pub reputation_increase: u8,
 }
 
 /// Package account that stores information about a specific delivery
@@ -310,4 +323,14 @@ pub enum ErrorCode {
     /// Operation attempted by unauthorized account
     #[msg("Unauthorized")]
     Unauthorized,
+    /// Package dimensions are invalid (zero or negative)
+    #[msg("Invalid dimensions")]
+    InvalidDimensions,
+    /// Package price is invalid (zero or negative)
+    #[msg("Invalid price")]
+    InvalidPrice,
+    #[msg("Insufficient escrow balance")]
+    InsufficientEscrowBalance,
+    #[msg("Invalid escrow account")]
+    InvalidEscrowAccount,
 }

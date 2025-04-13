@@ -4,11 +4,11 @@
 
 ### Prerequisites
 
-- Node v18.18.0 or higher
-
-- Rust v1.77.2 or higher
-- Anchor CLI 0.30.1 or higher
-- Solana CLI 1.18.17 or higher
+- anchor : 0.30.1
+- solana : 2.0.25
+- rustc : 1.85.0
+- node : v23.6.1
+- npm : 10.9.2
 
 ### Installation
 
